@@ -5,5 +5,7 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://russedavid.github.io',
                 'git_url': 'https://github.com/russedavid/format_conversation_dataset',
                 'lib_path': 'format_conversation_dataset'},
-  'syms': { 'format_conversation_dataset.core': { 'format_conversation_dataset.core.foo': ( 'core.html#foo',
-                                                                                            'format_conversation_dataset/core.py')}}}
+  'syms': { 'format_conversation_dataset.format_transcription': { 'format_conversation_dataset.format_transcription.convert_file': ( 'format_transcription.html#convert_file',
+                                                                                                                                     'format_conversation_dataset/format_transcription.py'),
+                                                                  'format_conversation_dataset.format_transcription.process_speakers': ( 'format_transcription.html#process_speakers',
+                                                                                                                                         'format_conversation_dataset/format_transcription.py')}}}
