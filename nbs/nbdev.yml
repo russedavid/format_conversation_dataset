@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "format_conversation_dataset"
+  site-url: "https://russedavid.github.io/format_conversation_dataset"
+  description: "tools for formatting datasets for fine tuning"
+  repo-branch: main
+  repo-url: "https://github.com/russedavid/format_conversation_dataset"
