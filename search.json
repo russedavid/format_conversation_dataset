@@ -1,0 +1,42 @@
+[
+  {
+    "objectID": "format_transcription.html",
+    "href": "format_transcription.html",
+    "title": "Format conversation transcription",
+    "section": "",
+    "text": "source\n\nconvert_file\n\n convert_file (input_file_path, assistant_speaker, output_file_path=None,\n               system_context=None)\n\n*Convert a file containing speaker dialogues to JSON format.\nArgs: input_file_path (str): Path to the input text file. assistant_speaker (str): The speaker number to designate as the assistant. output_file_path (str, optional): Path to save the output JSON file. If not provided, returns the JSON string.\nReturns: str or None: If output_file_path is not provided, returns the JSON string. Otherwise, saves to file and returns None.*\n\nsource\n\n\nprocess_speakers\n\n process_speakers (input_text, assistant_speaker, system_context=None)\n\n*Process the input text and convert it to the desired JSON format.\nArgs: input_text (str): The input text containing speaker dialogues. assistant_speaker (str): The speaker number to designate as the assistant.\nReturns: dict: A dictionary containing the processed messages.*",
+    "crumbs": [
+      "Format conversation transcription"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "format_conversation_dataset",
+    "section": "",
+    "text": "Convert your diarized content into a dataset that can be used to finetune a model!",
+    "crumbs": [
+      "format_conversation_dataset"
+    ]
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "format_conversation_dataset",
+    "section": "Install",
+    "text": "Install\npip install format_conversation_dataset",
+    "crumbs": [
+      "format_conversation_dataset"
+    ]
+  },
+  {
+    "objectID": "index.html#how-to-use",
+    "href": "index.html#how-to-use",
+    "title": "format_conversation_dataset",
+    "section": "How to use",
+    "text": "How to use\nDesignate a speaker number as the ‘assistant’ and supply input and output file paths, and this module with do the rest.\nfrom format_covnersation_dataset.core import *\nconvert_file(‘input/file/path’, ‘output/file/path’, 1, “You are participating in a conversation”)\nThis will output a json format like so:\n{‘messages’: [ { ‘role’ : ‘system’, ‘content’ : ‘You are participating in a conversation’ }, { ‘role’ : ‘user’, ‘content’ : ‘SPEAKER_02 : Hello everyone SPEAKER_03 : Good morning SPEAKER_04 : Hi’ }, { ‘role’ : ‘assistant’, ‘content’ : ‘Hi!’ },\n]}",
+    "crumbs": [
+      "format_conversation_dataset"
+    ]
+  }
+]
