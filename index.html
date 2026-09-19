@@ -1,0 +1,85 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Conversational Dataset Formatter</title><style>body{font:17px system-ui;line-height:1.6;max-width:900px;margin:auto;padding:32px;background:#f7f1e7;color:#352c25}pre{background:#ece2d3;padding:16px;overflow-x:auto}code{font-size:.9em}a{color:#70472c}table{border-collapse:collapse}td,th{border:1px solid #c9bca6;padding:8px}</style><h1>Conversational Dataset Formatter</h1>
+<p>Turn speaker-labeled conversations into <strong>responses to other people</strong>, with the context needed to understand each response. Preserve the original wording, review the targets, keep related sources in the same split, and train only on the assistant's completion.</p>
+<p>The library works with arbitrary speakers, subjects, and assistant roles. It accepts speaker-labeled text and WhisperX JSON with word-level timing. It does not need a hosted model or a running application.</p>
+<h2>Install</h2>
+<p>From a checkout, with Python 3.10 or newer:</p>
+<pre><code class="language-sh">python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[tokenize]'
+conversation-dataset --help
+</code></pre>
+<p>Install from this checkout for the current pipeline; an older package release has only the original conversation converter. Download the tokenizer you intend to train with separately. Preparation loads that tokenizer locally and does not download model weights.</p>
+<h2>Prepare a dataset</h2>
+<p>Keep source material and generated outputs in a separate local directory. The filenames below are placeholders, not bundled inputs.</p>
+<ol>
+<li>Create a review worksheet for each source. Speaker IDs must match the source exactly.</li>
+</ol>
+<p><code>sh
+   conversation-dataset review /path/to/private/input.txt \
+     --assistant SPEAKER_00 --output /path/to/private/review.json</code></p>
+<p>The worksheet includes the source turns and candidate responses. After reading the response <strong>and its preceding exchange</strong>, set suitable candidates to <code>"verdict": "keep"</code> and identify the reviewer. Leave unsuitable candidates as <code>pending</code> or set <code>reject</code>. <code>origin</code> is <code>human</code> for an actual human review or <code>model</code> for automated screening. The latter requires explicit opt-in during the build.</p>
+<ol>
+<li>Create a manifest outside the checkout. Use separate conversation groups for training and validation. All related sessions and alternate versions belong to the same group. Assign the same <code>source_identity</code> to alternate transcriptions of a recording; the build permits only one variant.</li>
+</ol>
+<p><code>json
+   {
+     "system": "Respond to participants' requests in context. Ask when information is missing.",
+     "sources": [
+       {
+         "path": "training-input.txt",
+         "reviews": "training-review.json",
+         "group": "group-a",
+         "source_identity": "recording-a",
+         "split": "train",
+         "assistant_speakers": ["SPEAKER_00"]
+       },
+       {
+         "path": "validation-input.txt",
+         "reviews": "validation-review.json",
+         "group": "group-b",
+         "source_identity": "recording-b",
+         "split": "validation",
+         "assistant_speakers": ["SPEAKER_00"]
+       }
+     ]
+   }</code></p>
+<p>Paths resolve relative to the manifest. <code>test</code> is also supported. Split assignment is explicit: randomly dividing turns from the same conversation would leak context across the boundary.</p>
+<ol>
+<li>Build a new snapshot with the actual local tokenizer.</li>
+</ol>
+<p><code>sh
+   conversation-dataset build /path/to/private/manifest.json \
+     --tokenizer /path/to/local/model \
+     --sequence-len 4096 --output /path/to/private/snapshot</code></p>
+<p>Add <code>--allow-screened</code> only when deliberately including model-screened responses. Their provenance remains <code>model-screened</code>; screening is never relabeled as human review.</p>
+<h2>What the pipeline protects</h2>
+<ul>
+<li>Consecutive turns by the same assistant become one complete response. The full preceding participant stimulus and preceding assistant exchange are protected during context fitting.</li>
+<li>Review decisions bind to source hashes, response boundaries, and exact response text. Source changes require a new review.</li>
+<li>Unknown speaker lines survive import. Ambiguous context is skipped rather than silently attributed to the assistant.</li>
+<li>Related groups, source identities, duplicate examples, and identical responses cannot cross training/evaluation splits. Different transcriptions of one recording cannot be counted as separate sources.</li>
+<li>Targets and future turns never enter their own context. Targets and required exchanges are never truncated to fit a token limit.</li>
+<li>The tokenizer's generation prefix must match the full chat serialization exactly. Only completion tokens and the end-of-turn token receive loss; prompt labels are <code>-100</code>.</li>
+<li>Existing snapshots are not overwritten. Hashes, skipped-example reasons, review origins, and token-mask audits accompany the outputs.</li>
+</ul>
+<p>These checks cannot discover that differently labeled groups secretly belong to the same source, or certify semantic quality. Source grouping and target review still require judgment. Strict duplicate-response checks can also reject common short replies; curate those examples instead of treating repeated filler as useful independent evidence.</p>
+<h2>Output contract</h2>
+<p>Each snapshot contains <code>manifest.json</code>, <code>{split}.sources.jsonl</code>, <code>{split}.tokens.jsonl</code>, and <code>{split}.mask-audit.json</code>. The tokenized rows have <code>input_ids</code>, <code>attention_mask</code>, and <code>labels</code>. The manifest records counts, sequence length, and SHA-256 hashes.</p>
+<p>This is the input contract consumed by <strong>qwen-ttrpg</strong>. Other trainers can use the same pretokenized rows. <code>pipeline.prepare</code> also accepts already-reviewed prompt/completion rows for structured tasks; each needs group/source/split provenance and preceding/target turn numbers. The formatter does not invent task labels or rule knowledge.</p>
+<p>All generated files are private working artifacts. They contain source text and are intentionally excluded from source control.</p>
+<h2>Original conversion API</h2>
+<p>The original whole-conversation interface remains available:</p>
+<pre><code class="language-python">from format_conversation_dataset.format_transcription import convert_file
+
+convert_file(
+    &quot;input.txt&quot;, assistant_speaker=0, output_file_path=&quot;conversation.json&quot;,
+    system_context=&quot;Participate in the conversation.&quot;,
+)
+</code></pre>
+<p>It produces a <code>messages</code> array, not reviewed response examples or token masks. Unrecognized speaker lines now raise an error instead of disappearing. Use the review pipeline when speaker labels need attention.</p>
+<h2>Development</h2>
+<pre><code class="language-sh">python -m pip install -e '.[dev]'
+python -m pytest -q
+python scripts/check_public_tree.py
+</code></pre>
+<p>CI checks Python 3.10 and 3.12. Tests use short, original synthetic phrases; no source conversations or recordings are distributed. For a release audit, <code>check_public_tree.py --history --terms-file /path/to/private/identifiers.txt</code> also scans reachable branch/tag history and an external list of private identifiers. The list itself must stay outside the repository.</p>
