@@ -90,6 +90,10 @@ This is the input contract consumed by **qwen-ttrpg**. Other trainers can use th
 
 All generated files are private working artifacts. They contain source text and are intentionally excluded from source control.
 
+For structured supervision, identical labels can be legitimate across independent inputs: two unrelated windows may both contain no events. The `verify_splits` and `prepare` Python APIs accept `check_response_duplicates=False` for that case. Group, source-identity, alternate-transcription, and complete-example checks remain active. Free-text response preparation keeps duplicate-response checking enabled by default. The chosen policy is recorded in the snapshot manifest.
+
+The candidate records returned by `response_examples` include original response text, preceding context, protected turn IDs, and whether a stimulus exists. These support task-specific review interfaces without pretending that an unreviewed candidate is already an approved training example.
+
 ## Original conversion API
 
 The original whole-conversation interface remains available:

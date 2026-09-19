@@ -91,6 +91,23 @@ def test_exact_duplicate_response_across_splits_is_rejected():
         verify_splits({"train": example_rows()[0], "validation": example_rows("validation")[0]})
 
 
+def test_structured_labels_may_repeat_without_relaxing_source_isolation():
+    train = example_rows()[0]
+    validation = example_rows("validation", " Independent input.")[0]
+    for row in validation:
+        body = json.loads(row["prompt"][-1]["content"])
+        body["recent_dialogue"][0]["text"] += " Different question."
+        row["prompt"][-1]["content"] = json.dumps(body)
+    for row in train + validation:
+        row["completion"][0]["content"] = '{"events": []}'
+    with pytest.raises(ValueError, match="response crosses"):
+        verify_splits({"train": train, "validation": validation})
+    verify_splits({"train": train, "validation": validation}, check_response_duplicates=False)
+    validation[0]["provenance"]["group"] = "train"
+    with pytest.raises(ValueError, match="group crosses"):
+        verify_splits({"train": train, "validation": validation}, check_response_duplicates=False)
+
+
 def test_source_variants_and_future_context_are_rejected():
     rows = example_rows()[0]
     rows[1]["provenance"]["source_sha256"] = "alternate-transcription"

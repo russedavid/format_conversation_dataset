@@ -78,6 +78,8 @@ def response_examples(turns, *, group, source_sha256, split, assistant_speakers,
             while start > 0 and indexed[start - 1]["speaker"] == speaker:
                 start -= 1
         context = indexed[min(max(0, i - context_turns), start):i]
+        candidate.update(response=target, context=context, has_stimulus=has_stimulus,
+                         protected_context_turns=[t["turn"] for t in indexed[start:i]])
         decision = decisions.get(numbers)
         reason = None
         if not has_stimulus:
@@ -121,7 +123,7 @@ def response_examples(turns, *, group, source_sha256, split, assistant_speakers,
     return rows, candidates, dict(skipped)
 
 
-def verify_splits(datasets):
+def verify_splits(datasets, *, check_response_duplicates=True):
     ownership = {}
     variants = {}
     for split, rows in datasets.items():
@@ -134,10 +136,12 @@ def verify_splits(datasets):
             group = p.get("group", p.get("story"))
             if not group or not p.get("source_sha256"):
                 raise ValueError("Group and source provenance are required.")
-            for kind, value in [("group", group), ("source", p["source_sha256"]),
+            identities = [("group", group), ("source", p["source_sha256"]),
                                 ("source_identity", p.get("source_identity", p["source_sha256"])),
-                                ("example", digest(packed(row["prompt"]) + packed(row["completion"]))),
-                                ("response", digest(packed(row["completion"])) )]:
+                                ("example", digest(packed(row["prompt"]) + packed(row["completion"])))]
+            if check_response_duplicates:
+                identities.append(("response", digest(packed(row["completion"]))))
+            for kind, value in identities:
                 key = (kind, value)
                 if key in ownership and ownership[key] != split:
                     raise ValueError(f"{kind} crosses training/evaluation splits.")
@@ -153,9 +157,9 @@ def verify_splits(datasets):
                 raise ValueError("Exactly one assistant completion is required.")
 
 
-def prepare(datasets, output, tokenizer, sequence_len=4096):
+def prepare(datasets, output, tokenizer, sequence_len=4096, *, check_response_duplicates=True):
     """Write a new immutable snapshot with loss-mask and split provenance audits."""
-    verify_splits(datasets)
+    verify_splits(datasets, check_response_duplicates=check_response_duplicates)
     output = Path(output).expanduser().resolve()
     if output.exists():
         raise ValueError("Choose a new output directory; existing snapshots are immutable.")
@@ -187,6 +191,7 @@ def prepare(datasets, output, tokenizer, sequence_len=4096):
                 (hashes if suffix == "tokens" else source_hashes)[split] = digest(payload)
             (staging / f"{split}.mask-audit.json").write_text(packed(audits[split]), encoding="utf-8")
         manifest = {"created": now(), "format_version": 1, "sequence_len": sequence_len,
+                    "check_response_duplicates": check_response_duplicates,
                     "examples": {s: len(encoded[s]) for s in sorted(SPLITS)},
                     "tokenized_sha256": hashes, "sources_sha256": source_hashes,
                     "omitted": dict(omitted), "label_policy": "Only assistant completion and end-of-turn tokens have loss."}
