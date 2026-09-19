@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "format_conversation_dataset"
 version = "0.2.0"
 description = "Source-preserving conversational datasets with response boundaries and completion-only training masks."
+authors = [{name = "David Russell", email = "10607194+russedavid@users.noreply.github.com"}]
 requires-python = ">=3.10"
 license = "Apache-2.0"
 dependencies = []

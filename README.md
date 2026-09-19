@@ -1,5 +1,7 @@
 # Conversational Dataset Formatter
 
+Created by [David Russell](https://github.com/russedavid).
+
 Turn speaker-labeled conversations into **responses to other people**, with the context needed to understand each response. Preserve the original wording, review the targets, keep related sources in the same split, and train only on the assistant's completion.
 
 The library works with arbitrary speakers, subjects, and assistant roles. It accepts speaker-labeled text and WhisperX JSON with word-level timing. It does not need a hosted model or a running application.
